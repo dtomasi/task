@@ -280,6 +280,11 @@ func (e *Executor) mkdir(t *taskfile.Task) error {
 }
 
 func (e *Executor) runDepsSerially(ctx context.Context, t *taskfile.Task) error {
+
+	if e.SkipDeps {
+		return nil
+	}
+
 	for _, d := range t.Deps {
 		d := d
 
