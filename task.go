@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/go-task/task/internal/libraries"
 	"github.com/go-task/task/v2/internal/compiler"
 	compilerv1 "github.com/go-task/task/v2/internal/compiler/v1"
 	compilerv2 "github.com/go-task/task/v2/internal/compiler/v2"
@@ -38,6 +39,7 @@ type Executor struct {
 	Force      bool
 	Watch      bool
 	Verbose    bool
+	UpdateLibs bool
 	Silent     bool
 	Dry        bool
 	Summary    bool
@@ -46,10 +48,11 @@ type Executor struct {
 	Stdout io.Writer
 	Stderr io.Writer
 
-	Logger      *logger.Logger
-	Compiler    compiler.Compiler
-	Output      output.Output
-	OutputStyle string
+	LibraryUpdater *libraries.Updater
+	Logger         *logger.Logger
+	Compiler       compiler.Compiler
+	Output         output.Output
+	OutputStyle    string
 
 	taskvars taskfile.Vars
 
@@ -91,16 +94,6 @@ func (e *Executor) Setup() error {
 		e.Entrypoint = "Taskfile.yml"
 	}
 
-	var err error
-	e.Taskfile, err = read.Taskfile(e.Dir, e.Entrypoint)
-	if err != nil {
-		return err
-	}
-	e.taskvars, err = read.Taskvars(e.Dir)
-	if err != nil {
-		return err
-	}
-
 	if e.Stdin == nil {
 		e.Stdin = os.Stdin
 	}
@@ -114,6 +107,21 @@ func (e *Executor) Setup() error {
 		Stdout:  e.Stdout,
 		Stderr:  e.Stderr,
 		Verbose: e.Verbose,
+	}
+
+	e.LibraryUpdater = &libraries.Updater{
+		Logger: *e.Logger,
+	}
+
+	var err error
+	e.Taskfile, err = read.Taskfile(e.Dir, e.Entrypoint, e.LibraryUpdater, e.UpdateLibs)
+	if err != nil {
+		return err
+	}
+
+	e.taskvars, err = read.Taskvars(e.Dir)
+	if err != nil {
+		return err
 	}
 
 	v, err := strconv.ParseFloat(e.Taskfile.Version, 64)
