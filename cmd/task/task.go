@@ -50,6 +50,7 @@ func main() {
 	var (
 		versionFlag bool
 		init        bool
+		updateLibs  bool
 		list        bool
 		status      bool
 		force       bool
@@ -66,6 +67,7 @@ func main() {
 
 	pflag.BoolVar(&versionFlag, "version", false, "show Task version")
 	pflag.BoolVarP(&init, "init", "i", false, "creates a new Taskfile.yml in the current folder")
+	pflag.BoolVarP(&updateLibs, "update-libs", "u", false, "Updates the libraries")
 	pflag.BoolVarP(&list, "list", "l", false, "lists tasks with description of current Taskfile")
 	pflag.BoolVar(&status, "status", false, "exits with non-zero exit code if any of the given tasks is not up-to-date")
 	pflag.BoolVarP(&force, "force", "f", false, "forces execution even when the task is up-to-date")
@@ -111,6 +113,7 @@ func main() {
 		Force:      force,
 		Watch:      watch,
 		Verbose:    verbose,
+		UpdateLibs:	updateLibs,
 		Silent:     silent,
 		Dir:        dir,
 		Dry:        dry,

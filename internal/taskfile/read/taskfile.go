@@ -3,11 +3,16 @@ package read
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
-	"github.com/go-task/task/v2/internal/taskfile"
+	"github.com/go-task/task/internal/libraries"
+
+	"github.com/go-task/task/internal/taskfile"
+	"github.com/mitchellh/go-homedir"
 
 	"gopkg.in/yaml.v2"
 )
@@ -18,18 +23,49 @@ var (
 )
 
 // Taskfile reads a Taskfile for a given directory
-func Taskfile(dir string, entrypoint string) (*taskfile.Taskfile, error) {
+func Taskfile(dir string, entrypoint string, u *libraries.Updater, up bool) (*taskfile.Taskfile, error) {
 	path := filepath.Join(dir, entrypoint)
 	if _, err := os.Stat(path); err != nil {
 		return nil, fmt.Errorf(`task: No Taskfile found on "%s". Use "task --init" to create a new one`, path)
 	}
+
 	t, err := readTaskfile(path)
 	if err != nil {
 		return nil, err
 	}
 
+	if up {
+		e := u.Update(t)
+		if e != nil {
+			log.Fatalln(e)
+		}
+	}
+
 	for namespace, path := range t.Includes {
-		path = filepath.Join(dir, path)
+
+		if strings.Contains(path, ":") {
+
+			home, err := homedir.Dir()
+			if err != nil {
+				return nil, err
+			}
+
+			libMap := strings.Split(path, ":")
+			libPath := filepath.Join(home, ".task", "libraries", libMap[0])
+
+			if _, err := os.Stat(libPath); os.IsNotExist(err) {
+				e := u.Update(t)
+				if e != nil {
+					log.Fatalln(e)
+				}
+			}
+
+			path = filepath.Join(libPath, libMap[1])
+
+		} else {
+			path = filepath.Join(dir, path)
+		}
+
 		info, err := os.Stat(path)
 		if err != nil {
 			return nil, err
@@ -68,6 +104,8 @@ func Taskfile(dir string, entrypoint string) (*taskfile.Taskfile, error) {
 }
 
 func readTaskfile(file string) (*taskfile.Taskfile, error) {
+	fmt.Sprintf("%s", file)
+
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
